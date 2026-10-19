@@ -20,12 +20,13 @@ Rules are checked in the order above, and each record gets at most one flag (the
 
 ## Sample Results
 
-Running against the included sample data (210 records of fictional employees) produces 30 anomalies:
+Running against the included sample data (210 records of fictional employees) produces 35 anomalies:
 
 | Anomaly | Count |
 |---|---|
 | Late Arrival | 13 |
 | Early Departure | 12 |
+| Unauthorized Overtime | 5 |
 | Missing Clock Out | 3 |
 | Missing Clock In | 2 |
 
@@ -74,6 +75,5 @@ CSV uploaded to Cloud Storage → Cloud Run processes the file → anomalies sto
 ## Future Work
 
 - Allow multiple flags per record (e.g. a late arrival that also runs into overtime)
-- Add overtime cases to the sample data
 - Accept the input file path as a command-line argument
 - Add unit tests for each detection rule
