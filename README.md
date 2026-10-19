@@ -1,91 +1,79 @@
-**Project Overview**
-- **Name:** Timecard Anomaly Detector: a simple Python tool that detects common timecard issues and produces an anomaly report.
+# Timecard Anomaly Detector
 
-**Business Problem**
-- **Context:** Organizations rely on accurate timecards for payroll, compliance, and workforce planning.
-- **Problem:** Missing clock-ins/outs, late arrivals, unauthorized overtime, and early departures cause payroll errors and compliance risk.
-- **Value:** This project demonstrates an automated, repeatable process to flag anomalies for review, reducing manual auditing effort.
+A Python tool that scans employee timecard data for common problems and writes them to a report for review.
 
-**Features**
-- **Missing Clock In/Out:** Flags records with empty clock-in or clock-out times.
-- **Late Arrival:** Flags arrivals more than 15 minutes late.
-- **Unauthorized Overtime:** Flags total hours worked > 8.5.
-- **Early Departure:** Flags total hours worked < 7.0.
+## Business Problem
 
-**Repository Files**
-- [detector.py](detector.py): core detection script that reads the CSV and writes `anomaly_report.csv`.
-- [timecard_sample_data.csv](timecard_sample_data.csv): sample data with seeded anomalies.
-- [requirements.txt](requirements.txt): Python dependencies.
-- [Dockerfile](Dockerfile): containerizes the app.
+Organizations rely on accurate timecards for payroll, compliance, and workforce planning. Missing punches, late arrivals, unauthorized overtime, and early departures cause payroll errors and compliance risk, and finding them by hand is slow. This project automates that first pass so reviewers only look at the records that need attention.
 
-**Tech Stack**
-- **Language:** Python
-- **Libraries:** pandas
-- **Container:** Docker (optional)
-- **GCP (recommended deployment):** Cloud Storage, Cloud Run, BigQuery, Looker Studio
+## What It Detects
 
-**Architecture (high level)**
-- CSV uploaded to Cloud Storage → Cloud Run processes file → anomalies stored in BigQuery → visualized in Looker Studio. The repo contains a local, single-node variant driven by `detector.py`.
+| Anomaly | Rule |
+|---|---|
+| Missing Clock In | `actual_clock_in` is empty |
+| Missing Clock Out | `actual_clock_out` is empty |
+| Late Arrival | Clock-in more than 15 minutes after `scheduled_start` |
+| Unauthorized Overtime | `total_hours_worked` over 8.5 |
+| Early Departure | `total_hours_worked` under 7.0 |
 
-**Run Locally**
-1. Create a Python virtual environment and install dependencies:
+Rules are checked in the order above, and each record gets at most one flag (the first rule it matches).
+
+## Sample Results
+
+Running against the included sample data (210 records of fictional employees) produces 30 anomalies:
+
+| Anomaly | Count |
+|---|---|
+| Late Arrival | 13 |
+| Early Departure | 12 |
+| Missing Clock Out | 3 |
+| Missing Clock In | 2 |
+
+## Repository Files
+
+- [detector.py](detector.py): reads the timecard CSV and writes `anomaly_report.csv`
+- [timecard_sample_data.csv](timecard_sample_data.csv): fictional sample data with seeded anomalies
+- [requirements.txt](requirements.txt): Python dependencies
+- [Dockerfile](Dockerfile): container image for the detector
+- [.github/workflows/run_detector.yml](.github/workflows/run_detector.yml): GitHub Actions workflow that runs the detector on every push to `main` and uploads the report as a build artifact
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): guide for deploying to Google Cloud
+
+## Tech Stack
+
+- **Language:** Python 3.11
+- **Library:** pandas
+- **Container:** Docker
+- **CI:** GitHub Actions
+
+## Run Locally
 
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-```
-
-2. Run the detector against the sample data:
-
-```bash
 python detector.py
 ```
 
-3. Output: `anomaly_report.csv` will be written in the repository root.
+The report is written to `anomaly_report.csv` in the repository root.
 
-**Run with Docker**
-1. Build the image:
+## Run with Docker
 
 ```bash
 docker build -t timecard-anomaly-detector:local .
-```
-
-2. Run the container (it will run the script and exit):
-
-```bash
 docker run --rm -v "$PWD":/app timecard-anomaly-detector:local
 ```
 
-The generated `anomaly_report.csv` will be available in your working directory.
+The container runs the detector once and exits; `anomaly_report.csv` appears in your working directory.
 
-**How to push this project to GitHub**
-1. Initialize a git repository (if you haven't already):
+## Cloud Deployment (Planned Architecture)
 
-```bash
-git init
-git add .
-git commit -m "Initial commit: Timecard Anomaly Detector"
-```
+This repo runs as a single local script. [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) describes a Google Cloud version:
 
-2. Create a GitHub repository using the website or the CLI (replace `USERNAME` & `REPO`):
+CSV uploaded to Cloud Storage → Cloud Run processes the file → anomalies stored in BigQuery → dashboards in Looker Studio
 
-```bash
-# Using gh (GitHub CLI)
-gh repo create USERNAME/REPO --public --source=. --remote=origin --push
+## Future Work
 
-# OR manually create the repo on github.com and then:
-git remote add origin https://github.com/USERNAME/REPO.git
-git branch -M main
-git push -u origin main
-```
-
-3. Share the repository link with employers; include a short `README.md` overview and demo output (`anomaly_report.csv`).
-
-**Next steps for a polished portfolio**
-- Add a sample `anomaly_report.csv` (generated) and a short demo GIF or screenshots.
-- Add CI with GitHub Actions to run the detector on push and upload the report as an artifact.
-- Add deployment docs and scripts for GCP: Cloud Build or GitHub Actions to build/push the container, Cloud Run deployment, and a small ingestion job for BigQuery.
-
-**Contact / Credits**
-- Built for portfolio demonstration of GCP and cloud-native data processing patterns.
+- Allow multiple flags per record (e.g. a late arrival that also runs into overtime)
+- Add overtime cases to the sample data
+- Accept the input file path as a command-line argument
+- Add unit tests for each detection rule

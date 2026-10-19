@@ -20,7 +20,7 @@ for _, row in df.iterrows():
         anomalies.append({**row, 'anomaly_type': 'Missing Clock Out'})
     
     # Late arrival (more than 15 minutes)
-    elif (row['actual_clock_in'] - row['scheduled_start']).seconds / 60 > 15:
+    elif (row['actual_clock_in'] - row['scheduled_start']).total_seconds() / 60 > 15:
         anomalies.append({**row, 'anomaly_type': 'Late Arrival'})
     
     # Unauthorized overtime (over 8.5 hours)
